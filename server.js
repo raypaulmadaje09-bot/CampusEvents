@@ -23,11 +23,6 @@ app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "50mb" }));
 
 /* ======================
-   OPTIONAL FRONTEND
-====================== */
-app.use(express.static(path.join(__dirname, "dist")));
-
-/* ======================
    MYSQL POOL (AIVEN READY)
 ====================== */
 const pool = mysql.createPool({
@@ -60,22 +55,12 @@ const testDB = async () => {
 testDB();
 
 /* ======================
-   ROOT
-====================== */
-app.get("/", (req, res) => {
-  res.send("CampusEve Backend Server Running");
-});
-
-/* ======================
-   HEALTH CHECK
+   1. SPECIFIC API ENDPOINTS (Must come first!)
 ====================== */
 app.get("/api/health", (req, res) => {
   res.json({ status: "UP", message: "CampusEve Active" });
 });
 
-/* ======================
-   TEST DB ROUTE (IMPORTANT)
-====================== */
 app.get("/test-db", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT 1 + 1 AS result");
@@ -86,9 +71,7 @@ app.get("/test-db", async (req, res) => {
   }
 });
 
-/* ======================
-   EVENTS
-====================== */
+// EVENTS
 app.get("/api/events", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM events ORDER BY date DESC");
@@ -138,10 +121,7 @@ app.put("/api/events/:id", async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    await pool.query("UPDATE events SET status = ? WHERE id = ?", [
-      status,
-      id,
-    ]);
+    await pool.query("UPDATE events SET status = ? WHERE id = ?", [status, id]);
 
     res.json({ success: true });
   } catch (err) {
@@ -160,9 +140,7 @@ app.delete("/api/events/:id", async (req, res) => {
   }
 });
 
-/* ======================
-   USERS
-====================== */
+// USERS
 app.get("/api/users", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM users");
@@ -200,15 +178,10 @@ app.delete("/api/users/:id", async (req, res) => {
   }
 });
 
-/* ======================
-   FEEDBACK
-====================== */
+// FEEDBACK
 app.get("/api/feedback", async (req, res) => {
   try {
-    const [messages] = await pool.query(
-      "SELECT * FROM feedback ORDER BY timestamp DESC"
-    );
-
+    const [messages] = await pool.query("SELECT * FROM feedback ORDER BY timestamp DESC");
     for (let msg of messages) {
       const [replies] = await pool.query(
         "SELECT * FROM replies WHERE feedback_id = ? ORDER BY timestamp ASC",
@@ -216,7 +189,6 @@ app.get("/api/feedback", async (req, res) => {
       );
       msg.replies = replies;
     }
-
     res.json(messages);
   } catch (err) {
     console.log("FEEDBACK ERROR:", err);
@@ -233,15 +205,7 @@ app.post("/api/feedback", async (req, res) => {
       `INSERT INTO feedback 
       (id, senderName, senderEmail, subject, message, timestamp, status)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        m.senderName,
-        m.senderEmail,
-        m.subject,
-        m.message,
-        m.timestamp,
-        m.status || "new",
-      ]
+      [id, m.senderName, m.senderEmail, m.subject, m.message, m.timestamp, m.status || "new"]
     );
 
     res.status(201).json({ success: true, id });
@@ -252,13 +216,24 @@ app.post("/api/feedback", async (req, res) => {
 });
 
 /* ======================
-   API FALLBACK (FIXED WITH REGEX)
+   2. API FALLBACK (Catch missing /api routes before static)
 ====================== */
 app.all(/^\/api\/(.*)/, (req, res) => {
   res.status(404).json({
     success: false,
     error: "API endpoint not found",
   });
+});
+
+/* ======================
+   3. FRONTEND STATIC FILES & SPA ROUTING
+====================== */
+// Serve the production build files
+app.use(express.static(path.join(__dirname, "dist")));
+
+// Fallback to index.html for React Router paths
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
 /* ======================
