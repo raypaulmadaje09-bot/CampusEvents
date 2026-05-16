@@ -1,68 +1,3 @@
-/**
- * SQL SCHEMA FOR MYSQL WORKBENCH
- * 
- * CREATE DATABASE campus_event_scheduller;
- * USE campus_event_scheduller;
- * 
- * CREATE TABLE users (
- *   id VARCHAR(255) PRIMARY KEY,
- *   name VARCHAR(255) NOT NULL,
- *   email VARCHAR(255) UNIQUE NOT NULL,
- *   password VARCHAR(255) NOT NULL,
- *   role ENUM('MasterAdmin', 'Admin', 'Student') NOT NULL,
- *   avatar TEXT
- * );
- * 
- * CREATE TABLE events (
- *   id VARCHAR(255) PRIMARY KEY,
- *   title VARCHAR(255) NOT NULL,
- *   description TEXT,
- *   date DATE NOT NULL,
- *   startTime VARCHAR(50),
- *   endTime VARCHAR(50),
- *   location VARCHAR(255),
- *   category VARCHAR(100),
- *   organizer VARCHAR(255),
- *   attendees INT DEFAULT 0,
- *   image LONGTEXT,
- *   isPopular BOOLEAN DEFAULT FALSE,
- *   isLive BOOLEAN DEFAULT FALSE,
- *   status ENUM('Approved', 'Pending') DEFAULT 'Pending'
- * );
- * 
- * CREATE TABLE feedback (
- *   id VARCHAR(255) PRIMARY KEY,
- *   senderName VARCHAR(255),
- *   senderEmail VARCHAR(255),
- *   subject VARCHAR(255),
- *   message TEXT,
- *   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
- *   status ENUM('new', 'read', 'replied') DEFAULT 'new'
- * );
- * 
- * CREATE TABLE replies (
- *   id INT AUTO_INCREMENT PRIMARY KEY,
- *   feedback_id VARCHAR(255),
- *   sender ENUM('Admin', 'Student'),
- *   text TEXT,
- *   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
- *   FOREIGN KEY (feedback_id) REFERENCES feedback(id) ON DELETE CASCADE
- * );
- * 
- * CREATE TABLE audit_logs (
- *   id VARCHAR(255) PRIMARY KEY,
- *   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
- *   action VARCHAR(255),
- *   actor VARCHAR(255),
- *   type VARCHAR(50),
- *   details TEXT
- * );
- * 
- * -- INITIAL MASTER NODE
- * INSERT INTO users (id, name, email, password, role)
- * VALUES ('u1', 'Master Admin', 'master@campus.edu', 'master', 'MasterAdmin');
- */
-
 import express from 'express';
 import cors from 'cors';
 import mysql from 'mysql2/promise';
@@ -73,15 +8,24 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+/* =========================
+   MIDDLEWARE
+========================= */
+app.use(cors({
+  origin: "*"
+}));
 app.use(express.json({ limit: '50mb' }));
 
-// ROOT ROUTE
+/* =========================
+   ROOT ROUTE
+========================= */
 app.get("/", (req, res) => {
   res.send("CampusEve Backend Server Running");
 });
 
-// DATABASE CONNECTION
+/* =========================
+   DATABASE CONNECTION
+========================= */
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -92,7 +36,9 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// HEALTH CHECK
+/* =========================
+   HEALTH CHECK
+========================= */
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'UP',
@@ -100,21 +46,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ==========================
-// EVENTS
-// ==========================
-
+/* =========================
+   EVENTS
+========================= */
 app.get('/api/events', async (req, res) => {
   try {
     const [rows] = await pool.query(
       'SELECT * FROM events ORDER BY date DESC'
     );
-
     res.json(rows);
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -147,11 +89,8 @@ app.post('/api/events', async (req, res) => {
     );
 
     res.status(201).json(e);
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -165,14 +104,9 @@ app.put('/api/events/:id', async (req, res) => {
       [status, id]
     );
 
-    res.json({
-      success: true
-    });
-
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -185,33 +119,21 @@ app.delete('/api/events/:id', async (req, res) => {
       [id]
     );
 
-    res.json({
-      success: true
-    });
-
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ==========================
-// USERS
-// ==========================
-
+/* =========================
+   USERS
+========================= */
 app.get('/api/users', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM users'
-    );
-
+    const [rows] = await pool.query('SELECT * FROM users');
     res.json(rows);
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -234,11 +156,8 @@ app.post('/api/users', async (req, res) => {
     );
 
     res.status(201).json(u);
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -251,21 +170,15 @@ app.delete('/api/users/:id', async (req, res) => {
       [id]
     );
 
-    res.json({
-      success: true
-    });
-
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ==========================
-// FEEDBACK
-// ==========================
-
+/* =========================
+   FEEDBACK
+========================= */
 app.get('/api/feedback', async (req, res) => {
   try {
     const [messages] = await pool.query(
@@ -277,16 +190,12 @@ app.get('/api/feedback', async (req, res) => {
         'SELECT * FROM replies WHERE feedback_id = ? ORDER BY timestamp ASC',
         [msg.id]
       );
-
       msg.replies = replies;
     }
 
     res.json(messages);
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -296,8 +205,7 @@ app.post('/api/feedback', async (req, res) => {
 
     await pool.query(
       `INSERT INTO feedback
-      (id, senderName, senderEmail, subject,
-      message, timestamp, status)
+      (id, senderName, senderEmail, subject, message, timestamp, status)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         m.id,
@@ -311,11 +219,8 @@ app.post('/api/feedback', async (req, res) => {
     );
 
     res.status(201).json(m);
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -325,9 +230,8 @@ app.post('/api/feedback/:id/reply', async (req, res) => {
     const { sender, text, timestamp } = req.body;
 
     await pool.query(
-      `INSERT INTO replies
-      (feedback_id, sender, text, timestamp)
-      VALUES (?, ?, ?, ?)`,
+      `INSERT INTO replies (feedback_id, sender, text, timestamp)
+       VALUES (?, ?, ?, ?)`,
       [id, sender, text, timestamp]
     );
 
@@ -336,33 +240,23 @@ app.post('/api/feedback/:id/reply', async (req, res) => {
       [id]
     );
 
-    res.status(201).json({
-      success: true
-    });
-
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ==========================
-// AUDIT LOGS
-// ==========================
-
+/* =========================
+   AUDIT LOGS
+========================= */
 app.get('/api/audit', async (req, res) => {
   try {
     const [rows] = await pool.query(
       'SELECT * FROM audit_logs ORDER BY timestamp DESC'
     );
-
     res.json(rows);
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -385,16 +279,15 @@ app.post('/api/audit', async (req, res) => {
     );
 
     res.status(201).json(l);
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// START SERVER
+/* =========================
+   START SERVER
+========================= */
 app.listen(PORT, () => {
-  console.log(`[DATABASE PROTOCOL ACTIVE] Connected to campus_event_scheduller`);
+  console.log(`[DATABASE PROTOCOL ACTIVE] campus_event_scheduller`);
   console.log(`[SERVER ACTIVE] Running on port ${PORT}`);
 });
