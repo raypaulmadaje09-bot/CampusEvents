@@ -252,9 +252,9 @@ app.post("/api/feedback", async (req, res) => {
 });
 
 /* ======================
-   API FALLBACK (FIXED HERE)
+   API FALLBACK (FIXED WITH REGEX)
 ====================== */
-app.all("/api/:any*", (req, res) => {
+app.all(/^\/api\/(.*)/, (req, res) => {
   res.status(404).json({
     success: false,
     error: "API endpoint not found",
