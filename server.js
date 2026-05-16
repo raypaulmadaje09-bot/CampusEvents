@@ -216,7 +216,7 @@ app.post("/api/feedback", async (req, res) => {
 });
 
 /* ======================
-   2. API FALLBACK (Catch missing /api routes before static)
+   2. API FALLBACK (Catch missing /api routes safely)
 ====================== */
 app.all(/^\/api\/(.*)/, (req, res) => {
   res.status(404).json({
@@ -228,11 +228,11 @@ app.all(/^\/api\/(.*)/, (req, res) => {
 /* ======================
    3. FRONTEND STATIC FILES & SPA ROUTING
 ====================== */
-// Serve the production build files
+// Serve the production build files from your client app
 app.use(express.static(path.join(__dirname, "dist")));
 
-// Fallback to index.html for React Router paths
-app.get("*", (req, res) => {
+// Fallback to index.html for React Router paths (Bypasses path-to-regexp string restrictions)
+app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
